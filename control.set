@@ -1,0 +1,33 @@
+# Settings file for 'ScrewUpData' -- all distances in mm, energies keV
+
+useRealSegments 0
+
+# Position resolution (Gaussian smearing) options
+# 1 0 0 - smears position with uniform sigmas
+# 1 1 0 - smears position with highE different sigmas
+#         (following then sigmaXYZ for (1) highestE and (2) others
+# 1 0 1 - smears with E dependent sigma 
+#         (following then sigmaXYZ for (1) 100keV and (2) 1MeV
+# 0 0 0 - no position Gaussian smearing
+
+smearPosition 0 0 0
+1 0. 0. 0.
+#2 2. 2. 2.
+
+# Combine points - Within same segment only?  Coalescence distance?
+
+#combinePoints 0 1.0
+
+# Move low energy points towards boundaries 
+#    - Minimum segment mult?  Maximum E to move?
+
+#moveLowE2Boundary 3 100.
+
+# Apply cc resolutions - filename?
+
+ccResolutions resolutions.dat
+
+# Apply segment resolutions - filename?
+
+#segResolutions segResolutions.dat
+
