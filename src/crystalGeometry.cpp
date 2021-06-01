@@ -151,7 +151,7 @@ Int_t CrystalGeometry::GetBasisPoints(TString basisFilename) {
   } else {
     printf("Reading basis file \"%s\".", basisFilename.Data());
   }
-  fread(header, 256, 1, basisFile);
+  siz = fread(header, 256, 1, basisFile);
   
   siz = fread(basis, sizeof(basis_point), GRID_PTS, basisFile);
   if (siz != GRID_PTS) { 

@@ -50,6 +50,11 @@ def rootcint(target, source, env):
     ok = os.system(command)
     return ok
 
+def remember_pcm(target, source, env):                                          
+    new_target = os.path.splitext(str(target[0]))[0]+'_rdict.pcm'               
+    target.append(new_target)                                                   
+    return target, source
+
 ## Create construction environment propagating the external environment
 env = Environment(ENV=os.environ,
       		  CXXCOMSTR = compile_source_message,
@@ -64,7 +69,7 @@ env = Environment(ENV=os.environ,
   		  JAVACCOMSTR = compile_source_message)
 
 ## Create a rootcint builder and attach it to the environment
-bld = Builder(action=Action(rootcint,root_dictionary_message))
+bld = Builder(action=Action(rootcint,root_dictionary_message), emitter = remember_pcm)
 env.Append(BUILDERS = {'RootCint':bld})
 
 ## Optimization flags ##################################################

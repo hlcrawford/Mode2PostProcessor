@@ -1,0 +1,9 @@
+.*
+!.gitignore
+*~
+*.pcm
+*Dict.cpp
+BasisA.root
+BasisB.root
+basis_rawA10.dat
+basis_rawB10.dat

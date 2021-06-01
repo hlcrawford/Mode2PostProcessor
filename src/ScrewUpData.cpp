@@ -115,9 +115,6 @@ int main(int argc, char *argv[]) {
     PrintHelpInformation(argv); exit(1);
   }
 
-  TString resFilename = "resolutions.dat";
-  ReadResolutions(resFilename);
-
   FILE *inf, *outf;
  
   if (fileNameIn.Contains(".gz")) {
@@ -139,6 +136,10 @@ int main(int argc, char *argv[]) {
   if (setFile) {
     ctrl.getSettings(fileNameSet.Data());
   }
+
+  //TString resFilename = "resolutions.dat";
+  TString resFilename = ctrl.ccResFile;
+  ReadResolutions(resFilename);
 
   /* Segment energy resolution parameters, for now */
   ctrl.ASeg = 0.3;  ctrl.BSeg = 0.24;
@@ -469,8 +470,8 @@ int main(int argc, char *argv[]) {
   } /* End of "while we still have data and not interrupt signal" */
 
     printf("Total: %lld \n", totalIntPts);
-    printf("Deleted: %lld (%0.2f\%)\n", numRemoved, (Float_t)(numRemoved)*100./(Float_t)(totalIntPts));
-    printf("Reassigned: %lld (%0.2f\%)\n", numSegReassigned, (Float_t)(numSegReassigned)*100./(Float_t)(totalIntPts));
+    printf("Deleted: %lld (%0.2f%%)\n", numRemoved, (Float_t)(numRemoved)*100./(Float_t)(totalIntPts));
+    printf("Reassigned: %lld (%0.2f%%)\n", numSegReassigned, (Float_t)(numSegReassigned)*100./(Float_t)(totalIntPts));
     printf("  Changed by 1 layer: %lld\n", numSegLayer);
     printf("  Changed by 1 wedge: %lld\n", numSegWedge);
 
@@ -542,7 +543,8 @@ void SetSegmentNumbers(CrystalGeometry *crystal) {
 
 void AddCCResolution(TRandom3 *gRandom, Int_t crystalNum){
   //Float_t sigma = resA[(crystalNum-1)]*TMath::Power(g2.tot_e, resB[(crystalNum-1)]);
-  Float_t sigma = g2.tot_e*0.01/2.35;
+  //Float_t sigma = g2.tot_e*0.01/2.35;
+  Float_t sigma = std::sqrt(resA[crystalNum-1]+resB[crystalNum-1]*g2.tot_e);
   g2.tot_e += gRandom->Gaus(0, sigma);
 };
 
@@ -831,7 +833,7 @@ void ConsolidateToSegmentCenters(Int_t ct) {
 
 void PrintHelpInformation(char *argv[]) {
   cout << "Usage: " << argv[0] << " <usageFlags> -fIn <inputFileName> -fOut <outputFileName> " << endl;
-  cout << "    Valid usage flags: -fSet <setFileName> (not yet implemented)" << endl;
+  cout << "    Valid usage flags: -fSet <setFileName>" << endl;
 };
 
 void PrintIntPts(Int_t num) {
