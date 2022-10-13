@@ -80,7 +80,7 @@ try:
     env.ParseConfig('root-config --cflags')
     env.ParseConfig('root-config --glibs')
 except OSError:
-    print "scons: ROOT not found!"
+    print ("scons: ROOT not found!")
     exit(1)
 
 env.Append(LINKFLAGS = ['-lGeom'])
@@ -97,16 +97,6 @@ env.RootCint(controlDictTarget, controlDictHeaders)
 controlLibTarget = 'Control'
 controlLibSources = ['src/ControlDict.cpp', 'src/ControlParameters.cpp']
 env.SharedLibrary(target = controlLibTarget, source = controlLibSources,
-		  SHLIBPREFIX='lib')
-
-## Building CrystalGeoDict and libCrystalGeo #################################
-crystalGeoDictTarget = 'src/CrystalGeoDict.cpp'
-crystalGeoDictHeaders = ['src/crystalGeometry.h', 'src/LinkDefCrystalGeometry.h']
-env.RootCint(crystalGeoDictTarget, crystalGeoDictHeaders)
-
-crystalGeoLibTarget = 'CrystalGeo'
-crystalGeoLibSources = ['src/CrystalGeoDict.cpp', 'src/crystalGeometry.cpp']
-env.SharedLibrary(target = crystalGeoLibTarget, source = crystalGeoLibSources,
 		  SHLIBPREFIX='lib')
 
 ## Building ScrewUpData executable #####################################

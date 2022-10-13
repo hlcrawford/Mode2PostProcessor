@@ -24,7 +24,6 @@
 #include "colors.h"
 
 #include "Globals.h"
-#include "crystalGeometry.h"
 #include "ControlParameters.h"
 
 using namespace std;
@@ -36,13 +35,12 @@ using namespace std;
 void PrintHelpInformation(char *argv[]);
 
 int GetGRETINA(FILE *inf, Int_t lengthRemaining);
-void SmearInteractionPoint(CrystalGeometry *crystal, TRandom3 *gRandom, Int_t intPointNum, Int_t sigmaX, 
+void SmearInteractionPoint(TRandom3 *gRandom, Int_t intPointNum, Int_t sigmaX, 
 			   Int_t sigmaY, Int_t sigmaZ, Int_t keepSameSeg);
 void CombineInteractionPoints(Int_t intPointNum1, Int_t intPointNum2);
 int GetBasisPts(Int_t crystal, TString basisFilename);
 void AddCCResolution(TRandom3 *gRandom, Int_t crystalNum);
 void AddIntPtResolution(TRandom3 *gRandom, Int_t crystalNum, Float_t ASeg, Float_t BSeg);
-void SetSegmentNumbers(CrystalGeometry *crystal);
 void AddInteractionPoint(TRandom3 *gRandom, Int_t xtal, Int_t segmentNum, 
 			 Int_t eLimitLow, Int_t eLimitHigh);
 void DeleteInteractionPoint(Int_t intPointNum);
@@ -147,27 +145,6 @@ int main(int argc, char *argv[]) {
   /* Other data types - buffer for copying */
   UShort_t temp[8192];
 
-  TGeoManager *geom = new TGeoManager("Crystals", "GRETINA Crystals"); 
-  geom->SetVerboseLevel(0);
-  TGeoMaterial *matVacuum = new TGeoMaterial("Vacuum", 0, 0, 0);
-  TGeoMedium *Vacuum = new TGeoMedium("Vacuum", 1, matVacuum);
-  TGeoVolume *top = geom->MakeBox("TOP", Vacuum, 1000., 1000., 1000.);
-  geom->SetTopVolume(top);
-
-  CrystalGeometry *crystalGeo[2];
-  crystalGeo[0] = new CrystalGeometry();
-  crystalGeo[0]->BuildCrystal(0, top);
-  crystalGeo[1] = new CrystalGeometry();
-  crystalGeo[1]->BuildCrystal(1, top);
-  geom->CloseGeometry();
-  geom->SetVisLevel(4);
-  top->Raytrace();
-
-  crystalGeo[0]->GetBasisPoints("basis_rawB10.dat");
-  crystalGeo[1]->GetBasisPoints("basis_rawA10.dat");
-  crystalGeo[0]->WriteBasisSpectra("BasisB.root");
-  crystalGeo[1]->WriteBasisSpectra("BasisA.root");
-
   Int_t siz = 0;
   Int_t lengthRemaining = 0;
   long long int remaining = 0;
@@ -264,35 +241,6 @@ int main(int argc, char *argv[]) {
 	    }
 	  }
 
-	  //--------------- Clean up interaction points that are outside the crystal physical limits
-	  
-	  for (Int_t m=0; m<g2.num; m++) {
-	    if (!crystalGeo[(ct)]->IsInside(g2.intpts[m].x, g2.intpts[m].y, g2.intpts[m].z)) {
-	      if  (crystalGeo[(ct)]->DistanceToEdge(g2.intpts[m].x, g2.intpts[m].y, g2.intpts[m].z) > 0.2) {
-	   	numRemoved++;
-	   	if (DEBUG) {
-	   	  printf(DCYAN "-- Point outside crystal removed...\n");
-	   	  printf("   Data %d: (%0.3f, %0.3f, %0.3f): %d:  %0.3f\n" RESET_COLOR, ct, g2.intpts[m].x, g2.intpts[m].y, 
-	   		 g2.intpts[m].z, !crystalGeo[(ct)]->IsInside(g2.intpts[m].x, g2.intpts[m].y, g2.intpts[m].z),
-	   		 crystalGeo[(ct)]->DistanceToEdge(g2.intpts[m].x, g2.intpts[m].y, g2.intpts[m].z));
-		}
-	   	DeleteInteractionPoint(m); 
-	   	m = -1;
-	      }
-	    }
-	  }
-
-	  /* Reset the segment numbers according to basis segment limits */
-	  /* This needs to be checked -- running on data seems to change segments, which is weird */
-	  if (ctrl.useRealSegments) {
-	    SetSegmentNumbers(crystalGeo[ct]);
-	  }
-	    
-	  if (DEBUG) {
-	    printf(DCYAN "DEBUG: After segment reassignments...\n" RESET_COLOR);
-	    PrintIntPts(g2.num);
-	  }
-
 	  //--------------- Now add position resolutions...
 	  
 	  /* Add x,y and z Gaussian position resolutions */  
@@ -306,22 +254,20 @@ int main(int argc, char *argv[]) {
 		//g2.intpts[intNum].y = temp[1];
 		//g2.intpts[intNum].z = temp[2];
 		//printf("Smearing...\n");
-	   	  SmearInteractionPoint(crystalGeo[ct], gRandom, intNum, ctrl.sigmaX[0], ctrl.sigmaY[0], ctrl.sigmaZ[0], 0);
+	   	  SmearInteractionPoint(gRandom, intNum, ctrl.sigmaX[0], ctrl.sigmaY[0], ctrl.sigmaZ[0], 0);
 		  //}
 	      } 
 	    } else if (ctrl.highEdifferent && !ctrl.eDependent) { /* Treat the high E point differently in terms of sigma */
 	      for (Int_t intNum=0; intNum < g2.num; intNum++) {
 	   	Float_t temp[3] = {g2.intpts[intNum].x, g2.intpts[intNum].y, g2.intpts[intNum].z};
-	   	while(!crystalGeo[(ct)]->IsInside(g2.intpts[intNum].x, g2.intpts[intNum].y, g2.intpts[intNum].z)) { 
-	   	  g2.intpts[intNum].x = temp[0];
-	   	  g2.intpts[intNum].y = temp[1];
-	   	  g2.intpts[intNum].z = temp[2];
-	   	  if (intNum == 0) {
-	   	    SmearInteractionPoint(crystalGeo[ct], gRandom, intNum, ctrl.sigmaX[0], ctrl.sigmaY[0], ctrl.sigmaZ[0], 0);
-	   	  } else {
-	   	    SmearInteractionPoint(crystalGeo[ct], gRandom, intNum, ctrl.sigmaX[1], ctrl.sigmaY[1], ctrl.sigmaZ[1], 0);
-	   	  }
-	   	}
+		g2.intpts[intNum].x = temp[0];
+		g2.intpts[intNum].y = temp[1];
+		g2.intpts[intNum].z = temp[2];
+		if (intNum == 0) {
+		  SmearInteractionPoint(gRandom, intNum, ctrl.sigmaX[0], ctrl.sigmaY[0], ctrl.sigmaZ[0], 0);
+		} else {
+		  SmearInteractionPoint(gRandom, intNum, ctrl.sigmaX[1], ctrl.sigmaY[1], ctrl.sigmaZ[1], 0);
+		}
 	      } 
 	    } else if (ctrl.eDependent) {
 	      
@@ -333,8 +279,7 @@ int main(int argc, char *argv[]) {
 	      for (Int_t intNum=0; intNum < g2.num; intNum++) {
 	   	Float_t temp[3] = {g2.intpts[intNum].x, g2.intpts[intNum].y, g2.intpts[intNum].z};
 	   	g2.intpts[intNum].x = -100;
-	   	while(!crystalGeo[ct]->IsInside(g2.intpts[intNum].x, g2.intpts[intNum].y, g2.intpts[intNum].z) && 
-	   	      g2.intpts[intNum].e > 0.0) {
+	   	if (g2.intpts[intNum].e > 0.0) {
 	   	  g2.intpts[intNum].x = temp[0];
 	   	  g2.intpts[intNum].y = temp[1];
 	   	  g2.intpts[intNum].z = temp[2];
@@ -345,7 +290,7 @@ int main(int argc, char *argv[]) {
 	   		   ctrl.Ay*(TMath::Sqrt(1/g2.intpts[intNum].e)) + ctrl.By,
 	   		   ctrl.Az*(TMath::Sqrt(1/g2.intpts[intNum].e)) + ctrl.Bz);
 		  }
-	   	  SmearInteractionPoint(crystalGeo[ct], gRandom, intNum, 
+	   	  SmearInteractionPoint(gRandom, intNum, 
 	   				ctrl.Ax*(TMath::Sqrt(1/g2.intpts[intNum].e)) + ctrl.Bx,
 	   				ctrl.Ay*(TMath::Sqrt(1/g2.intpts[intNum].e)) + ctrl.By,
 	   				ctrl.Az*(TMath::Sqrt(1/g2.intpts[intNum].e)) + ctrl.Bz, 0);
@@ -385,10 +330,7 @@ int main(int argc, char *argv[]) {
 	   	    } else if (!ctrl.sameSegOnly) {
 		      CombineInteractionPoints(int1, int2);
 	   	      /* Possibly different segments -- check where it ends up. */
-		      if (ctrl.useRealSegments) {
-			SetSegmentNumbers(crystalGeo[ct]);
-		      }
-	   	      if (DEBUG) {
+		      if (DEBUG) {
 	   		printf(DBLUE "DEBUG: Did CombinePoints\n" RESET_COLOR);
 	   		PrintIntPts(g2.num);
 	   	      }
@@ -404,7 +346,7 @@ int main(int argc, char *argv[]) {
 	      PrintIntPts(g2.num);
 	    }
 	  }
-
+	  
 	  //--------------- Quite an artificial thing, but for high mult. segments, move low E to the edge
 	  
 	  /* Move low-energy interactions in segments with multiple
@@ -417,12 +359,6 @@ int main(int argc, char *argv[]) {
 	   	  lowE = g2.intpts[intNum].e; 
 	   	  low = intNum;
 	   	}
-	      }
-	      if (lowE < ctrl.maxE2Move) {
-	   	TVector3 edgePos = crystalGeo[ct]->GetNewInteractionPosition(gRandom, g2.intpts[low].seg);
-	   	g2.intpts[low].x = edgePos.X();
-	   	g2.intpts[low].y = edgePos.Y();
-	   	g2.intpts[low].z = edgePos.Z();
 	      }
 	    }
 	    if (DEBUG) {
@@ -507,40 +443,6 @@ int GetGRETINA(FILE *inf, Int_t lengthRemaining) {
 
 /*************** IP manipulation functions ***************/
 
-void SetSegmentNumbers(CrystalGeometry *crystal) {
-  for (int i=0; i<MAX_INTPTS; i++) {
-    if (g2.intpts[i].e > 0) {
-      Int_t newSeg = crystal->GetSegmentNumber(g2.intpts[i].x, g2.intpts[i].y, g2.intpts[i].z);
-      newSeg *=6;
-      newSeg += g2.intpts[i].seg%6;
-      if (g2.intpts[i].seg != newSeg) {
-	if (DEBUG) { 
-	  cout << "New segment for " << i << ": was " << g2.intpts[i].seg 
-	       << ", now " << newSeg << endl;
-	}
-	if (TMath::Abs(newSeg - g2.intpts[i].seg) == 6) { numSegLayer++; }
-	else if (TMath::Abs(newSeg - g2.intpts[i].seg) == 1 || TMath::Abs(newSeg - g2.intpts[i].seg) == 5) { numSegWedge++; }
-	  
-	g2.intpts[i].seg = newSeg;
-	numSegReassigned++;
-
-      }
-    }
-  }
-  
-  for (Int_t m=0; m<g2.num; m++) {
-    g2.intpts[m].seg_energy = g2.intpts[m].e;
-    for (Int_t n=0; n<g2.num; n++) {
-      if (n != m && g2.intpts[m].seg == g2.intpts[n].seg) {
-	g2.intpts[m].seg_energy += g2.intpts[n].e;
-      }
-    }
-  }
-
-  BubbleSortIntPts();
-
-};
-
 void AddCCResolution(TRandom3 *gRandom, Int_t crystalNum){
   //Float_t sigma = resA[(crystalNum-1)]*TMath::Power(g2.tot_e, resB[(crystalNum-1)]);
   //Float_t sigma = g2.tot_e*0.01/2.35;
@@ -560,7 +462,7 @@ void AddIntPtResolution(TRandom3 *gRandom, Int_t crystalNum, Float_t ASeg, Float
 
 };
 
-void SmearInteractionPoint(CrystalGeometry *crystal, TRandom3 *gRandom, Int_t intPointNum, Int_t sigmaX,
+void SmearInteractionPoint(TRandom3 *gRandom, Int_t intPointNum, Int_t sigmaX,
 			   Int_t sigmaY, Int_t sigmaZ, Int_t keepSameSeg = 1) {
 
   Double_t xOrig = g2.intpts[intPointNum].x;
@@ -571,31 +473,6 @@ void SmearInteractionPoint(CrystalGeometry *crystal, TRandom3 *gRandom, Int_t in
   g2.intpts[intPointNum].y += gRandom->Gaus(0, sigmaY);
   g2.intpts[intPointNum].z += gRandom->Gaus(0, sigmaZ);
 
-  //printf("%f %f %f --> %f %f %f\n", xOrig, yOrig, zOrig, g2.intpts[intPointNum].x, g2.intpts[intPointNum].y, g2.intpts[intPointNum].z);
-  
-  if (keepSameSeg) { 
-  /* Check we've maintained the same segment ID --> shouldn't smear out of the
-     segment.  So just pull back in toward the original point along the displacement
-     vector until we're back inside. */
-    Int_t newSeg = crystal->GetSegmentNumber(g2.intpts[intPointNum].x, g2.intpts[intPointNum].y, g2.intpts[intPointNum].z);
-    
-    if (newSeg != g2.intpts[intPointNum].seg) {
-      TVector3 *radial = new TVector3();
-      radial->SetXYZ(g2.intpts[intPointNum].x - xOrig, g2.intpts[intPointNum].y - yOrig, g2.intpts[intPointNum].z - zOrig);
-      
-      Int_t GOOD = 0;
-      
-      while (!GOOD) {
-	radial->SetMag(radial->Mag()*0.95);
-	g2.intpts[intPointNum].x = xOrig + radial->X();
-	g2.intpts[intPointNum].y = yOrig + radial->Y();
-	g2.intpts[intPointNum].z = zOrig + radial->Z();
-	newSeg = crystal->GetSegmentNumber(g2.intpts[intPointNum].x, g2.intpts[intPointNum].y, g2.intpts[intPointNum].z);
-	if (newSeg == g2.intpts[intPointNum].seg) { GOOD = 1; }
-      } 
-    }
-  }
- 
 }
 
 void BubbleSortIntPts() {
