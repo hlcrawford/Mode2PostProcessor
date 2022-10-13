@@ -83,7 +83,6 @@ except OSError:
     print ("scons: ROOT not found!")
     exit(1)
 
-env.Append(LINKFLAGS = ['-lGeom'])
 env.Append(CPPPATH='#')
 env.Append(LIBPATH='.')
 
