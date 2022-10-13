@@ -102,6 +102,6 @@ env.SharedLibrary(target = controlLibTarget, source = controlLibSources,
 ## Building ScrewUpData executable #####################################
 unpackTarget = 'ScrewUpData'
 unpackSources = ['src/ScrewUpData.cpp', 'src/Globals.cpp']
-envGo.Append(LIBS=['Control', 'CrystalGeo', 'Geom'])
+envGo.Append(LIBS=['Control'])
 envGo.Program(target = unpackTarget, source = unpackSources)
 
